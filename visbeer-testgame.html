@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visbeer Game</title>
+<style>
+body { margin: 0; overflow: hidden; background: #87ceeb; font-family: Arial;}
+#scoreBoard { position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+             font-size: 22px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; z-index:10;}
+canvas { display: block; margin: 0 auto; background: #a0e0ff; touch-action: none; }
+</style>
+</head>
+<body>
+
+<div id="scoreBoard">Score: 0</div>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+// Canvas setup
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Speler Visbeer
+const beerImg = new Image();
+beerImg.src = 'https://i.postimg.cc/3xC2M5Nm/visbeer-logo-jaren-1990.png'; // je Visbeer logo
+
+const beer = { width: 100, height: 100, x: canvas.width/2 - 50, y: canvas.height - 150, speed: 7 };
+
+// Vissen
+const vissen = [];
+const visImgs = [
+  'https://i.postimg.cc/7hHc1H5T/vis.png',
+  'https://i.postimg.cc/L8kLhPZp/vis2.png',
+  'https://i.postimg.cc/T1hC7fjV/vis3.png'
+];
+function spawnVis() {
+  const size = 50 + Math.random()*30;
+  const x = Math.random() * (canvas.width - size);
+  const y = -size;
+  const img = new Image();
+  img.src = visImgs[Math.floor(Math.random()*visImgs.length)];
+  vissen.push({x,y,width:size,height:size,img});
+}
+
+// Obstakels
+const obstakels = [];
+const obstakelImgs = [
+  'https://i.postimg.cc/yxZcS6zS/net.png',
+  'https://i.postimg.cc/7ZBvN5M7/rock.png'
+];
+function spawnObstakel() {
+  const size = 50 + Math.random()*30;
+  const x = Math.random() * (canvas.width - size);
+  const y = -size;
+  const img = new Image();
+  img.src = obstakelImgs[Math.floor(Math.random()*obstakelImgs.length)];
+  obstakels.push({x,y,width:size,height:size,img});
+}
+
+// Score
+let score = 0;
+const scoreBoard = document.getElementById('scoreBoard');
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(beerImg, beer.x, beer.y, beer.width, beer.height);
+  vissen.forEach(v=>ctx.drawImage(v.img,v.x,v.y,v.width,v.height));
+  obstakels.forEach(o=>ctx.drawImage(o.img,o.x,o.y,o.width,o.height));
+}
+
+function update() {
+  vissen.forEach(v=>v.y+=3 + score*0.05);
+  obstakels.forEach(o=>o.y+=3 + score*0.05);
+
+  // Check gevangen vis
+  for(let i=vissen.length-1;i>=0;i--){
+    const v=vissen[i];
+    if(beer.x < v.x+v.width && beer.x+beer.width>v.x &&
+       beer.y < v.y+v.height && beer.y+beer.height>v.y){
+      score++; scoreBoard.innerText='Score: '+score;
+      vissen.splice(i,1);
+    }
+  }
+
+  // Check obstakel
+  for(let i=obstakels.length-1;i>=0;i--){
+    const o=obstakels[i];
+    if(beer.x < o.x+o.width && beer.x+beer.width>o.x &&
+       beer.y < o.y+o.height && beer.y+beer.height>o.y){
+      alert('Game Over! Score: '+score);
+      score=0;
+      scoreBoard.innerText='Score: '+score;
+      vissen.length=0; obstakels.length=0;
+    }
+  }
+
+  // Verwijder vis/obstakel buiten scherm
+  vissen.forEach((v,i)=>{if(v.y>canvas.height)vissen.splice(i,1)});
+  obstakels.forEach((o,i)=>{if(o.y>canvas.height)obstakels.splice(i,1)});
+}
+
+// Game loop
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+loop();
+
+// Spawn interval
+setInterval(spawnVis,1200);
+setInterval(spawnObstakel,3000);
+
+// Touch & keyboard
+let touchX=null;
+canvas.addEventListener('touchstart', e=>touchX=e.touches[0].clientX);
+canvas.addEventListener('touchmove', e=>{
+  if(touchX!==null){ beer.x+=(e.touches[0].clientX-touchX)*0.5; touchX=e.touches[0].clientX; }
+  if(beer.x<0)beer.x=0; if(beer.x+beer.width>canvas.width)beer.x=canvas.width-beer.width;
+  e.preventDefault();
+});
+canvas.addEventListener('touchend', ()=>touchX=null);
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft') beer.x-=beer.speed;
+  if(e.key==='ArrowRight') beer.x+=beer.speed;
+  if(beer.x<0)
